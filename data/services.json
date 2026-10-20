@@ -1,0 +1,13 @@
+[
+  {"service_id": "P01", "name": "Tap repair", "category": "plumber", "price": 199, "about": "Leaking, dripping or loose tap"},
+  {"service_id": "P02", "name": "Pipe leak repair", "category": "plumber", "price": 349, "about": "Water leaking from a pipe under a sink or in a wall"},
+  {"service_id": "P03", "name": "Toilet flush repair", "category": "plumber", "price": 299, "about": "Flush not working, running water in the toilet tank"},
+  {"service_id": "E01", "name": "Fan installation", "category": "electrician", "price": 249, "about": "Fit a new ceiling or wall fan"},
+  {"service_id": "E02", "name": "Switchboard repair", "category": "electrician", "price": 199, "about": "Loose or sparking switch, socket not working"},
+  {"service_id": "E03", "name": "Light fitting", "category": "electrician", "price": 149, "about": "Fit a tube light, bulb holder or LED panel"},
+  {"service_id": "A01", "name": "AC service", "category": "ac_technician", "price": 599, "about": "Cleaning and check-up of a split or window AC"},
+  {"service_id": "A02", "name": "AC gas refill", "category": "ac_technician", "price": 2499, "about": "AC runs but does not cool because the gas is low"},
+  {"service_id": "A03", "name": "AC installation", "category": "ac_technician", "price": 1499, "about": "Fit a new split AC (indoor and outdoor unit)"},
+  {"service_id": "C01", "name": "Door lock repair", "category": "carpenter", "price": 299, "about": "Door lock stuck, broken or needs changing"},
+  {"service_id": "C02", "name": "Furniture assembly", "category": "carpenter", "price": 499, "about": "Put together a new bed, table, wardrobe or shelf"}
+]

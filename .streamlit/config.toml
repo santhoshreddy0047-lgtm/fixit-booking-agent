@@ -1,0 +1,34 @@
+# Streamlit settings for the FixIt app.
+# The colours match the variables at the top of assets/styles.css.
+
+[theme]
+base = "light"
+primaryColor = "#1677F8"
+backgroundColor = "#F3F6FB"
+secondaryBackgroundColor = "#F6F8FB"
+textColor = "#0F1B2D"
+linkColor = "#1677F8"
+borderColor = "#DCE3EE"
+showWidgetBorder = true
+showSidebarBorder = false
+baseRadius = "0.5rem"
+buttonRadius = "0.5rem"
+baseFontSize = 15
+greenColor = "#157A3B"
+orangeColor = "#D97706"
+redColor = "#D92D20"
+dataframeHeaderBackgroundColor = "#F3F6FB"
+
+# Dark navy navigation sidebar
+[theme.sidebar]
+backgroundColor = "#0B2348"
+secondaryBackgroundColor = "#15315E"
+textColor = "#D7E1F0"
+primaryColor = "#1677F8"
+borderColor = "#1E3C6B"
+
+[client]
+toolbarMode = "minimal"
+
+[browser]
+gatherUsageStats = false

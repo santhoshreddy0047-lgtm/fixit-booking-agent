@@ -1,0 +1,11 @@
+[
+  {"pin_code": "411001", "area": "Pune Camp", "zone": "inner", "visit_charge": 99},
+  {"pin_code": "411004", "area": "Deccan Gymkhana", "zone": "inner", "visit_charge": 99},
+  {"pin_code": "411005", "area": "Shivajinagar", "zone": "inner", "visit_charge": 99},
+  {"pin_code": "411016", "area": "Model Colony", "zone": "inner", "visit_charge": 99},
+  {"pin_code": "411038", "area": "Kothrud", "zone": "inner", "visit_charge": 99},
+  {"pin_code": "411007", "area": "Aundh", "zone": "outer", "visit_charge": 149},
+  {"pin_code": "411021", "area": "Bavdhan", "zone": "outer", "visit_charge": 149},
+  {"pin_code": "411045", "area": "Baner", "zone": "outer", "visit_charge": 149},
+  {"pin_code": "411057", "area": "Hinjewadi", "zone": "outer", "visit_charge": 149}
+]

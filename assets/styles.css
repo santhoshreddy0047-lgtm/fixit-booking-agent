@@ -1,0 +1,517 @@
+/* FixIt dashboard styles.
+
+   Most rules target the app's own "fx-" classes or keyed Streamlit containers:
+   Streamlit adds the class "st-key-<key>" to a container created with key="<key>".
+
+   A few rules have to use Streamlit's internal data-testid names. They are kept to a
+   minimum and may need a small update after a Streamlit upgrade:
+     stMainBlockContainer  page padding
+     stHorizontalBlock, stColumn, stLayoutWrapper   column layout and chat height
+     stBaseButton-primary / -secondary              sidebar button colours
+     stIconMaterial                                  sidebar button icon spacing
+     stForm                                          composer form border
+     stImage                                         technician photo crop
+*/
+
+:root {
+  --fx-navy: #0B2348;
+  --fx-blue: #1677F8;
+  --fx-blue-dark: #0F5BC4;
+  --fx-blue-soft: #EAF2FF;
+  --fx-blue-border: #CFE0FB;
+  --fx-green: #157A3B;
+  --fx-green-soft: #ECFDF3;
+  --fx-green-border: #B7E4C7;
+  --fx-amber: #9A4A06;
+  --fx-amber-icon: #D97706;
+  --fx-amber-soft: #FFF8EB;
+  --fx-amber-border: #F3D29B;
+  --fx-red: #B42318;
+  --fx-red-soft: #FEF3F2;
+  --fx-red-border: #F7C5C0;
+  --fx-text: #0F1B2D;
+  --fx-muted: #52627A;
+  --fx-faint: #7D8AA0;
+  --fx-border: #DCE3EE;
+  --fx-surface: #F6F8FB;
+  --fx-card: #FFFFFF;
+  --fx-radius: 12px;
+  --fx-radius-sm: 8px;
+  --fx-shadow: 0 1px 2px rgba(15, 27, 45, 0.05), 0 1px 4px rgba(15, 27, 45, 0.04);
+}
+
+/* ---------- Page frame ---------- */
+
+[data-testid="stMainBlockContainer"] {
+  padding: 1rem 1.5rem 1.5rem;
+  max-width: 1640px;
+}
+
+/* Material Symbols Rounded is loaded by Streamlit itself (it powers the button icons) */
+.fx-icon {
+  font-family: "Material Symbols Rounded";
+  font-weight: normal; font-style: normal; line-height: 1;
+  letter-spacing: normal; text-transform: none; white-space: nowrap; direction: ltr;
+  display: inline-flex; align-items: center; justify-content: center;
+  vertical-align: middle; flex-shrink: 0; user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- Top header ---------- */
+
+.fx-header {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 12px 20px;
+  background: var(--fx-card);
+  border: 1px solid var(--fx-border);
+  border-radius: var(--fx-radius);
+  box-shadow: var(--fx-shadow);
+  padding: 10px 18px;
+}
+.fx-brand { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.fx-brand-mark {
+  width: 40px; height: 40px; border-radius: 10px;
+  background: var(--fx-blue); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+}
+.fx-brand-name { font-size: 1.4rem; font-weight: 800; color: var(--fx-navy); line-height: 1; letter-spacing: -0.01em; }
+.fx-brand-sub { font-size: 0.74rem; font-weight: 600; color: var(--fx-muted); margin-top: 3px; }
+.fx-header-divider { width: 1px; height: 34px; background: var(--fx-border); }
+.fx-tagline-title { font-size: 0.98rem; font-weight: 700; color: var(--fx-text); line-height: 1.3; }
+.fx-tagline-sub { font-size: 0.8rem; color: var(--fx-muted); line-height: 1.3; }
+.fx-header-features { display: flex; align-items: center; gap: 22px; margin-left: auto; }
+.fx-feature { display: flex; align-items: center; gap: 9px; }
+.fx-feature-icon {
+  width: 34px; height: 34px; border-radius: var(--fx-radius-sm);
+  background: var(--fx-blue-soft); color: var(--fx-blue);
+  display: flex; align-items: center; justify-content: center;
+}
+.fx-feature-title { font-size: 0.82rem; font-weight: 700; color: var(--fx-text); white-space: nowrap; line-height: 1.3; }
+.fx-feature-sub { font-size: 0.72rem; color: var(--fx-muted); white-space: nowrap; line-height: 1.3; }
+
+/* The header adapts to its own width, which depends on whether the sidebar is open */
+.fx-header-wrap { container-type: inline-size; }
+@container (max-width: 1150px) {
+  /* Features move to their own evenly spaced row */
+  .fx-header-features {
+    margin-left: 0; width: 100%; justify-content: space-between; gap: 12px;
+    border-top: 1px solid var(--fx-border); padding-top: 10px;
+  }
+}
+@container (max-width: 760px) {
+  .fx-header-features .fx-feature-sub { display: none; }
+}
+@container (max-width: 520px) {
+  .fx-header-features, .fx-header-divider, .fx-tagline-sub { display: none; }
+  .fx-tagline-title { font-size: 0.85rem; }
+}
+
+/* ---------- Cards (any container whose key starts with "card_") ---------- */
+
+[class*="st-key-card_"] {
+  background: var(--fx-card);
+  border: 1px solid var(--fx-border);
+  border-radius: var(--fx-radius);
+  box-shadow: var(--fx-shadow);
+  padding: 16px;
+}
+.fx-card-title { font-size: 1rem; font-weight: 700; color: var(--fx-text); margin: 0; line-height: 1.3; }
+.fx-card-sub { font-size: 0.8rem; color: var(--fx-muted); margin-top: 2px; }
+.fx-section-title { font-size: 1.25rem; font-weight: 700; color: var(--fx-text); margin: 8px 0 2px; }
+.fx-section-sub { font-size: 0.86rem; color: var(--fx-muted); margin: 0 0 4px; }
+
+/* Policies page: keep the Markdown headings in proportion with the rest of the page */
+.st-key-card_policies h1 { font-size: 1.45rem; padding-top: 0.2rem; }
+.st-key-card_policies h2 { font-size: 1.1rem; padding-top: 0.8rem; }
+.st-key-card_policies p, .st-key-card_policies li { font-size: 0.92rem; }
+
+/* ---------- Chat panel ---------- */
+
+.fx-chat-head { display: flex; align-items: center; gap: 12px; }
+.fx-bot-mark {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--fx-blue-soft); color: var(--fx-blue);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.fx-chat-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.fx-chat-title h2 { font-size: 1.15rem; font-weight: 700; margin: 0; padding: 0; color: var(--fx-text); }
+.fx-chat-desc { font-size: 0.82rem; color: var(--fx-muted); margin-top: 2px; }
+
+.fx-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 0.72rem; font-weight: 600; border-radius: 999px; padding: 2px 9px;
+  border: 1px solid transparent; white-space: nowrap;
+}
+.fx-pill-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.fx-pill.online { color: var(--fx-green); background: var(--fx-green-soft); border-color: var(--fx-green-border); }
+.fx-pill.offline { color: var(--fx-red); background: var(--fx-red-soft); border-color: var(--fx-red-border); }
+.fx-pill.ai { color: #4246B8; background: #F0F0FF; border-color: #DCDDFB; }
+.fx-pill.confirmed { color: var(--fx-green); background: var(--fx-green-soft); border-color: var(--fx-green-border); }
+.fx-pill.cancelled { color: var(--fx-muted); background: #F1F4F8; border-color: var(--fx-border); }
+
+.st-key-chat_scroll {
+  border: 1px solid var(--fx-border);
+  border-radius: 10px;
+  background: #FBFCFE;
+  padding: 4px 6px 0;
+}
+/* The conversation area fills the screen height (Streamlit sets the size on its wrapper,
+   using flex-basis, so both values are set) */
+[data-testid="stLayoutWrapper"]:has(> .st-key-chat_scroll) {
+  height: clamp(420px, calc(100vh - 310px), 900px);
+  flex-basis: clamp(420px, calc(100vh - 310px), 900px);
+}
+
+.fx-msg { display: flex; gap: 10px; align-items: flex-start; margin: 12px 0; }
+.fx-msg.user { flex-direction: row-reverse; }
+.fx-avatar {
+  width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.fx-avatar.bot { background: var(--fx-blue-soft); color: var(--fx-blue); }
+.fx-avatar.user { background: #E4E9F2; color: #4A5B76; }
+.fx-body { display: flex; flex-direction: column; max-width: min(80%, 660px); min-width: 0; }
+.fx-msg.user .fx-body { align-items: flex-end; max-width: min(75%, 560px); }
+.fx-body.wide { max-width: min(94%, 700px); width: 100%; }
+
+.fx-bubble {
+  padding: 10px 14px; border-radius: 12px; font-size: 0.92rem; line-height: 1.5;
+  color: var(--fx-text); overflow-wrap: anywhere;
+}
+.fx-bubble.bot { background: #F2F5FA; border: 1px solid var(--fx-border); border-top-left-radius: 4px; }
+.fx-bubble.user { background: #DCEAFE; border: 1px solid #C2D8FA; border-top-right-radius: 4px; color: #0B2348; }
+.fx-bubble.notice-amber { background: var(--fx-amber-soft); border-color: var(--fx-amber-border); }
+.fx-bubble.notice-red { background: var(--fx-red-soft); border-color: var(--fx-red-border); }
+.fx-bubble.notice-gray { background: #F4F6FA; }
+.fx-bubble ul { margin: 6px 0; padding: 0; list-style: none; }
+.fx-bubble li { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+.fx-bubble li .fx-icon { color: var(--fx-green); }
+.fx-bubble p { margin: 0; }
+
+.fx-status-label {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 0.78rem; font-weight: 700; margin-bottom: 4px;
+}
+.fx-status-label.amber { color: var(--fx-amber); }
+.fx-status-label.amber .fx-icon { color: var(--fx-amber-icon); }
+.fx-status-label.red { color: var(--fx-red); }
+.fx-status-label.gray { color: var(--fx-muted); }
+
+.fx-time { font-size: 0.7rem; color: var(--fx-faint); margin-top: 4px; }
+
+.fx-typing { display: inline-flex; align-items: center; gap: 8px; color: var(--fx-muted); font-size: 0.86rem; }
+.fx-dots { display: inline-flex; gap: 4px; }
+.fx-dots span {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--fx-blue);
+  animation: fx-blink 1.2s infinite ease-in-out;
+}
+.fx-dots span:nth-child(2) { animation-delay: 0.2s; }
+.fx-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes fx-blink { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+
+/* ---------- Result cards inside the chat ---------- */
+
+.fx-result {
+  border: 1px solid var(--fx-border); border-radius: var(--fx-radius);
+  background: var(--fx-card); overflow: hidden; margin-top: 8px;
+}
+.fx-result-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  flex-wrap: wrap; padding: 12px 16px; border-bottom: 1px solid var(--fx-border);
+}
+.fx-result-title { display: flex; align-items: center; gap: 10px; }
+.fx-result-title strong { display: block; font-size: 1.02rem; }
+.fx-result-title span { display: block; font-size: 0.78rem; color: var(--fx-muted); }
+.fx-result-id { text-align: right; }
+.fx-result-id span { display: block; font-size: 0.68rem; color: var(--fx-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.fx-result-id strong { font-size: 1.2rem; color: var(--fx-text); letter-spacing: 0.01em; }
+
+.fx-result.success { border-color: var(--fx-green-border); }
+.fx-result.success .fx-result-head { background: var(--fx-green-soft); border-color: var(--fx-green-border); }
+.fx-result.success .fx-result-title strong, .fx-result.success .fx-result-title .fx-icon { color: var(--fx-green); }
+.fx-result.quote { border-color: var(--fx-blue-border); }
+.fx-result.quote .fx-result-head { background: var(--fx-blue-soft); border-color: var(--fx-blue-border); }
+.fx-result.quote .fx-result-title strong, .fx-result.quote .fx-result-title .fx-icon { color: var(--fx-blue-dark); }
+.fx-result.cancel .fx-result-head { background: #F3F5F9; }
+.fx-result.cancel .fx-result-title .fx-icon { color: var(--fx-muted); }
+
+.fx-result-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 16px; padding: 12px 16px;
+}
+.fx-details { display: flex; flex-direction: column; }
+.fx-detail-row {
+  display: grid; grid-template-columns: 18px 84px 1fr; align-items: center; gap: 8px;
+  padding: 6px 0; font-size: 0.86rem; border-bottom: 1px dashed #E8EDF4;
+}
+.fx-detail-row:last-child { border-bottom: none; }
+.fx-detail-row .fx-icon { color: var(--fx-faint); }
+.fx-detail-label { color: var(--fx-muted); }
+.fx-detail-value { color: var(--fx-text); font-weight: 600; overflow-wrap: anywhere; }
+
+.fx-price { background: var(--fx-surface); border: 1px solid var(--fx-border); border-radius: 10px; padding: 10px 12px; }
+.fx-price-title { font-size: 0.84rem; font-weight: 700; margin-bottom: 4px; }
+.fx-price-row { display: flex; justify-content: space-between; font-size: 0.84rem; color: var(--fx-muted); padding: 3px 0; }
+.fx-price-row b { color: var(--fx-text); font-weight: 600; }
+.fx-price-total {
+  display: flex; justify-content: space-between; align-items: baseline;
+  border-top: 1px solid var(--fx-border); margin-top: 6px; padding-top: 8px;
+  font-weight: 700; font-size: 0.95rem;
+}
+.fx-price-total b { font-size: 1.2rem; }
+.fx-result.success .fx-price-total {
+  color: var(--fx-green); background: var(--fx-green-soft);
+  margin: 8px -12px -10px; padding: 10px 12px; border-top-color: var(--fx-green-border);
+  border-radius: 0 0 10px 10px;
+}
+.fx-result.quote .fx-price-total { color: var(--fx-blue-dark); }
+
+.fx-result-foot {
+  display: flex; align-items: center; gap: 8px; padding: 9px 16px;
+  border-top: 1px solid var(--fx-border); background: #FAFBFD;
+  font-size: 0.8rem; color: var(--fx-muted);
+}
+.fx-fee { font-size: 1.25rem; font-weight: 700; color: var(--fx-text); }
+
+/* ---------- Composer ---------- */
+
+.st-key-composer_box { padding-top: 2px; }
+.st-key-composer_box [data-testid="stForm"] { border: none; padding: 0; }
+/* Keep the message box and Send button on one row, also on phones */
+.st-key-composer_box [data-testid="stHorizontalBlock"] { flex-wrap: nowrap; gap: 8px; }
+.st-key-composer_box [data-testid="stHorizontalBlock"] > div:first-child { flex: 1 1 auto; min-width: 0; }
+.st-key-composer_box [data-testid="stHorizontalBlock"] > div:last-child { flex: 0 0 auto; width: auto; min-width: 0; }
+
+/* ---------- Right panel ---------- */
+
+/* Promotional card with the technician photo */
+.st-key-card_service_info { background: #F4F8FF; border-color: #D6E4FA; }
+.st-key-card_service_info [data-testid="stHorizontalBlock"] { flex-wrap: nowrap; gap: 12px; }
+.st-key-card_service_info [data-testid="stColumn"] { min-width: 0; }
+.fx-promo-text h3 {
+  font-size: 1.2rem; line-height: 1.2; color: var(--fx-navy);
+  margin: 0 0 6px; padding: 0; font-weight: 800; letter-spacing: -0.01em;
+}
+.fx-promo-text p { font-size: 0.82rem; color: var(--fx-muted); margin: 0 0 10px; line-height: 1.4; }
+/* Benefits sit in a white panel, as in the reference */
+.st-key-card_service_info .fx-benefits {
+  background: #FFFFFF; border: 1px solid #D6E4FA; border-radius: 10px; padding: 8px 10px;
+}
+.st-key-card_service_info .fx-benefits .fx-icon {
+  width: 22px; height: 22px; border-radius: 50%; border: none;
+  background: var(--fx-green-soft); color: var(--fx-green);
+}
+/* Room below the last benefit (Streamlit pulls the last Markdown block up slightly) */
+.st-key-card_service_info .fx-promo-text { padding-bottom: 1rem; }
+.fx-benefits { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.fx-benefits li { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; font-weight: 600; color: var(--fx-text); margin: 0; }
+.fx-benefits .fx-icon {
+  width: 26px; height: 26px; border-radius: 7px; color: var(--fx-blue);
+  background: #fff; border: 1px solid #D6E4FA;
+}
+/* The photo keeps its 4:5 shape; object-fit crops instead of stretching, keeping the face in view */
+.st-key-card_service_info [data-testid="stImage"] img {
+  width: 100%; aspect-ratio: 4 / 5; max-height: 230px;
+  object-fit: cover; object-position: center top;
+  border-radius: 10px; border: 1px solid #D6E4FA;
+}
+
+.fx-photo-missing {
+  aspect-ratio: 4 / 5; max-height: 230px; border-radius: 10px;
+  border: 1px dashed #C9D9F3; background: #fff; color: var(--fx-faint);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  font-size: 0.74rem; text-align: center; padding: 8px;
+}
+
+.fx-booking {
+  display: grid; grid-template-columns: 36px 1fr auto; gap: 10px; align-items: start;
+  border: 1px solid var(--fx-border); border-radius: 10px; padding: 10px 12px; margin-top: 8px;
+}
+.fx-booking-icon {
+  width: 36px; height: 36px; border-radius: 9px; background: var(--fx-blue-soft); color: var(--fx-blue);
+  display: flex; align-items: center; justify-content: center;
+}
+.fx-booking-id { font-size: 0.82rem; font-weight: 700; color: var(--fx-text); }
+.fx-booking-service { font-size: 0.86rem; color: var(--fx-text); }
+.fx-booking-meta { font-size: 0.74rem; color: var(--fx-muted); display: flex; align-items: center; gap: 4px; margin-top: 2px; }
+.fx-booking-side { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.fx-booking-total { font-weight: 700; font-size: 0.95rem; color: var(--fx-text); }
+
+.fx-empty {
+  text-align: center; color: var(--fx-muted); font-size: 0.84rem;
+  border: 1px dashed var(--fx-border); border-radius: 10px; padding: 18px 12px; margin-top: 8px;
+}
+.fx-empty .fx-icon { color: var(--fx-faint); display: flex; margin: 0 auto 6px; }
+.fx-empty strong { display: block; color: var(--fx-text); font-size: 0.9rem; margin-bottom: 2px; }
+
+.fx-safety {
+  background: var(--fx-amber-soft); border: 1px solid var(--fx-amber-border);
+  border-radius: 10px; padding: 12px; display: flex; gap: 10px;
+}
+.fx-safety > .fx-icon { color: var(--fx-amber-icon); margin-top: 1px; align-self: flex-start; }
+
+/* Quick actions: an even two-column grid; the last action spans both columns.
+   In a narrow card (container query) the actions stack in one column. */
+.st-key-card_quick_actions { container-type: inline-size; }
+.st-key-qa_grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.st-key-qa_grid > div:last-child { grid-column: 1 / -1; }
+@container (max-width: 300px) {
+  .st-key-qa_grid { grid-template-columns: 1fr; }
+}
+.st-key-qa_grid button { justify-content: flex-start; min-height: 2.6rem; }
+.st-key-qa_grid button > div { justify-content: flex-start; width: 100%; }
+.st-key-qa_grid [data-testid="stIconMaterial"] { font-size: 1.25rem; color: var(--fx-blue); }
+.st-key-qa_quote [data-testid="stIconMaterial"] { color: var(--fx-amber-icon); }
+.st-key-qa_cancel [data-testid="stIconMaterial"] { color: #D92D20; }
+.st-key-qa_services button > div::after {
+  content: "chevron_right"; font-family: "Material Symbols Rounded"; font-size: 1.2rem;
+  margin-left: auto; color: var(--fx-faint);
+}
+
+/* Title rows with a "View All" link. Streamlit gives Markdown a negative bottom margin,
+   which would push the title below the link, so it is removed here. */
+.st-key-recent_head [data-testid="stMarkdownContainer"],
+.st-key-popular_head [data-testid="stMarkdownContainer"] { margin-bottom: 0; }
+/* Title row with a "View All" link (Recent Bookings) */
+.st-key-recent_head [data-testid="stBaseButton-tertiary"],
+.st-key-recent_head [data-testid="stBaseButton-tertiary"] p { color: var(--fx-blue); font-weight: 600; }
+.fx-dot-sep { margin: 0 4px; color: var(--fx-faint); }
+/* Date and slot wrap as whole pieces, never in the middle of a date */
+.fx-booking-meta { flex-wrap: wrap; }
+.fx-booking-meta span { white-space: nowrap; }
+.st-key-card_recent .fx-booking:first-child { margin-top: 0; }
+
+/* A narrow services card (laptop widths): a smaller photo column and tighter benefits */
+.st-key-card_service_info { container-type: inline-size; }
+@container (max-width: 360px) {
+  .st-key-card_service_info [data-testid="stColumn"]:last-child { flex: 0 0 36%; }
+  .st-key-card_service_info .fx-benefits { padding: 6px 8px; }
+  .st-key-card_service_info .fx-benefits li { font-size: 0.76rem; gap: 6px; }
+  .fx-promo-text h3 { font-size: 1.05rem; }
+}
+
+/* Composer shortcut chips: white with blue text */
+.st-key-shortcut button { background: #FFFFFF; border-color: var(--fx-blue-border); color: var(--fx-blue-dark); }
+.st-key-shortcut button:hover { background: var(--fx-blue-soft); border-color: var(--fx-blue); }
+.st-key-shortcut [data-testid="stIconMaterial"] { color: var(--fx-blue); }
+.fx-safety strong { color: var(--fx-amber); font-size: 0.92rem; }
+.fx-safety p { margin: 4px 0 0; font-size: 0.8rem; color: #5E3D10; line-height: 1.45; }
+
+/* ---------- Sidebar ---------- */
+
+.fx-side-label {
+  font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+  color: #8EA3C4; margin: 10px 0 4px 6px;
+}
+.st-key-nav button, .st-key-popular button {
+  border: none; padding: 8px 12px; min-height: 0; margin-bottom: 2px;
+}
+/* Left-align the icon and the two-line label inside the navigation buttons */
+.st-key-nav button > div, .st-key-popular button > div { justify-content: flex-start; width: 100%; gap: 10px; }
+.st-key-nav button p, .st-key-popular button p {
+  text-align: left; font-size: 0.74rem; line-height: 1.4; color: #9FB2D0;
+}
+/* The first line of the label is the title */
+.st-key-nav button p::first-line, .st-key-popular button p::first-line {
+  font-size: 0.9rem; font-weight: 600; color: #EEF3FB;
+}
+.st-key-nav [data-testid="stIconMaterial"], .st-key-popular [data-testid="stIconMaterial"] { font-size: 1.2rem; }
+.st-key-nav [data-testid="stBaseButton-secondary"],
+.st-key-popular [data-testid="stBaseButton-secondary"] { background: transparent; color: #C7D4E8; }
+.st-key-nav [data-testid="stBaseButton-secondary"]:hover,
+.st-key-popular [data-testid="stBaseButton-secondary"]:hover { background: #15315E; }
+.st-key-nav [data-testid="stBaseButton-primary"] p { color: #DCE8FF; }
+.st-key-nav [data-testid="stBaseButton-primary"] p::first-line { color: #FFFFFF; }
+.st-key-nav button:focus-visible, .st-key-popular button:focus-visible { outline: 2px solid #7FB0FF; outline-offset: 1px; }
+
+/* Section title with a "View all" link on the same row */
+.fx-side-title { font-size: 0.98rem; font-weight: 700; color: #FFFFFF; padding-left: 4px; }
+.st-key-popular_head { margin-top: 10px; border-top: 1px solid #1E3C6B; padding-top: 12px; }
+.st-key-popular_head [data-testid="stBaseButton-tertiary"],
+.st-key-popular_head [data-testid="stBaseButton-tertiary"] p { color: #7FB0FF; font-size: 0.84rem; }
+
+/* Popular services: compact rows with a white icon tile and a chevron */
+.st-key-popular button {
+  background: #102B57; border: 1px solid #1E3C6B; border-radius: 10px;
+  padding: 8px 10px; margin-bottom: 6px;
+}
+.st-key-popular [data-testid="stBaseButton-secondary"] { background: #102B57; }
+.st-key-popular [data-testid="stIconMaterial"] {
+  width: 36px; height: 36px; min-width: 36px; flex-shrink: 0; border-radius: 8px;
+  background: #FFFFFF; color: var(--fx-blue);
+  display: inline-flex; align-items: center; justify-content: center; font-size: 1.3rem;
+}
+/* Streamlit wraps the icon in a span sized to the icon font; let it grow to the tile */
+.st-key-popular span:has(> [data-testid="stIconMaterial"]) { width: auto; height: auto; }
+.st-key-popular button > div::after {
+  content: "chevron_right"; font-family: "Material Symbols Rounded"; font-size: 1.25rem;
+  margin-left: auto; color: #9FB2D0;
+}
+
+.fx-side-note {
+  display: flex; gap: 10px; align-items: flex-start;
+  border: 1px solid #1E3C6B; border-radius: 10px; padding: 10px 12px; margin-top: 10px;
+  font-size: 0.76rem; color: #A9BBD6; line-height: 1.45;
+}
+.fx-side-note .fx-icon { color: #7FB0FF; margin-top: 1px; }
+.fx-side-note strong { display: block; color: #EEF3FB; font-size: 0.84rem; margin-bottom: 2px; }
+
+/* ---------- Other pages ---------- */
+
+.fx-service { display: flex; gap: 10px; align-items: flex-start; }
+.fx-service-name { font-weight: 700; font-size: 0.95rem; color: var(--fx-text); }
+.fx-service-about { font-size: 0.82rem; color: var(--fx-muted); margin-top: 2px; min-height: 2.4em; }
+.fx-service-price { font-size: 0.82rem; color: var(--fx-muted); margin-top: 6px; }
+.fx-service-price b { color: var(--fx-text); font-size: 1rem; }
+
+.fx-area-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 0; border-bottom: 1px solid #EDF1F6; font-size: 0.9rem;
+}
+.fx-area-row:last-child { border-bottom: none; }
+.fx-area-pin { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--fx-muted); font-size: 0.85rem; }
+.fx-panel-head { display: flex; justify-content: space-between; align-items: center; }
+.fx-zone-charge { font-size: 1.4rem; font-weight: 700; color: var(--fx-text); }
+
+.fx-stat { font-size: 0.78rem; color: var(--fx-muted); }
+.fx-stat b { display: block; font-size: 1.4rem; color: var(--fx-text); }
+
+/* ---------- Laptop and tablet ---------- */
+
+@media (max-width: 1180px) {
+  /* Not enough room for three columns: the chat gets the full width
+     and the side panel moves below it */
+  .st-key-chat_layout > [data-testid="stLayoutWrapper"] > [data-testid="stHorizontalBlock"] { flex-wrap: wrap; }
+  .st-key-chat_layout > [data-testid="stLayoutWrapper"] > [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+  [data-testid="stMainBlockContainer"] { padding: 0.9rem 1rem 1.2rem; }
+}
+@media (max-width: 990px) {
+  /* The sidebar collapses here: leave room for Streamlit's menu button at the top */
+  [data-testid="stMainBlockContainer"] { padding-top: 3.2rem; }
+}
+@media (min-width: 641px) and (max-width: 1180px) {
+  /* Side panel cards in two columns under the chat */
+  .st-key-side_panel { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
+}
+
+/* ---------- Mobile ---------- */
+
+@media (max-width: 640px) {
+  /* Top padding leaves room for Streamlit's menu button that opens the sidebar */
+  [data-testid="stMainBlockContainer"] { padding: 3.2rem 0.6rem 1rem; }
+  .fx-header { padding: 8px 12px; gap: 10px; }
+  [class*="st-key-card_"] { padding: 12px; }
+  /* The chat gets most of the small screen, with the message box still in view */
+  [data-testid="stLayoutWrapper"]:has(> .st-key-chat_scroll) { height: 50vh; flex-basis: 50vh; }
+  .fx-body, .fx-body.wide { max-width: calc(100% - 42px); }
+  .fx-msg.user .fx-body { max-width: 85%; }
+  .fx-chat-desc, .fx-pill.ai { display: none; }
+  /* Keep the assistant title and the Clear chat button on one row */
+  .st-key-chat_head [data-testid="stHorizontalBlock"] { flex-wrap: nowrap; gap: 8px; }
+  .st-key-chat_head [data-testid="stColumn"] { min-width: 0; }
+  .st-key-chat_head [data-testid="stColumn"]:last-child { flex: 0 0 auto; width: auto; }
+  .fx-detail-row { grid-template-columns: 18px 76px 1fr; }
+  .st-key-card_service_info [data-testid="stImage"] img { max-height: 200px; }
+}

@@ -1,0 +1,25 @@
+# Secrets: the real API key stays on this computer only
+.env
+.env.*
+!.env.example
+
+# Virtual environment and Python caches
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Booking records created while running the app (customer data)
+bookings.json
+
+# Design references (the app uses assets/technician.png instead)
+reference/
+
+# Screenshots not used in README.md (only screenshots/fixit-dashboard.png is published)
+screenshots/all-bookings.png
+screenshots/booking-confirmation.png
+screenshots/mobile.png
+screenshots/price-quote.png
+
+# Detailed audit notes kept locally (not required by the assignment)
+FULL_AUDIT_REPORT.md

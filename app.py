@@ -13,12 +13,14 @@ import io
 import json
 import os
 import re
-from datetime import date, datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 import requests
 import streamlit as st
 from PIL import Image  # installed together with Streamlit
+
+import tools  # only for the bookable dates, so the page and the back end use one rule
 
 API_URL = os.getenv("FIXIT_API_URL", "http://127.0.0.1:8000")
 REQUEST_TIMEOUT = 120
@@ -27,9 +29,6 @@ DATA_DIR = BASE_DIR / "data"
 CSS_FILE = BASE_DIR / "assets" / "styles.css"
 TECHNICIAN_IMAGE = BASE_DIR / "assets" / "technician.png"
 
-# Booking week from policies.md (the tools use the same fixed dates)
-WEEK_START = date(2026, 11, 2)
-BOOKING_WEEK = [WEEK_START + timedelta(days=offset) for offset in range(7)]
 SLOT_TIMES = {"Morning": "9 AM - 12 PM", "Afternoon": "12 PM - 3 PM", "Evening": "3 PM - 6 PM"}
 
 # Pages in the left navigation: (page key, title, short description, icon)
@@ -50,12 +49,13 @@ CATEGORY_INFO = {
 }
 
 # Starter text placed in the message box by the shortcuts. The customer finishes it.
+# Each quick action sends one plain request. It names no service, day or PIN code,
+# so the assistant asks the customer for whatever it really needs.
 STARTERS = {
-    "quote": "How much would a tap repair cost on Tuesday? My PIN code is ",
-    "book": "Please book a visit. Repair needed: , Day: , Slot (Morning, Afternoon or Evening): , "
-            "Name: , Mobile: , PIN code: ",
-    "slots": "Which time slots are free for a plumber on ",
-    "cancel": "Please cancel my booking FX-",
+    "quote": "I would like a price quote.",
+    "book": "I would like to book a home repair visit.",
+    "slots": "Which appointment slots are available?",
+    "cancel": "I want to cancel a booking.",
     "services": "Which repair services do you offer?",
 }
 SHORTCUTS = [
@@ -133,7 +133,8 @@ def now_label():
 # ---------------------------------------------------------------------------
 
 @st.cache_data
-def load_css():
+def load_css(modified_time):
+    # modified_time is part of the cache key, so edits to styles.css show without a restart
     return CSS_FILE.read_text(encoding="utf-8")
 
 
@@ -299,8 +300,11 @@ def greeting_message():
 def init_session():
     defaults = {
         "page": "chat",
+        "previous_page": "chat",
         "messages": [greeting_message()],
         "pending": None,
+        # The request the assistant asked more details about (None when nothing is open)
+        "open_request": None,
         "composer_text": "",
         "service_filter": "All",
     }
@@ -315,13 +319,23 @@ def is_busy():
 
 
 def go_to(page):
-    st.session_state.page = page
+    if st.session_state.get("page") != page:
+        st.session_state.previous_page = st.session_state.get("page", "chat")
+        st.session_state.page = page
+
+
+def go_back():
+    target = st.session_state.get("previous_page", "chat")
+    if target == st.session_state.get("page"):
+        target = "chat"
+    st.session_state.previous_page = "chat"
+    st.session_state.page = target
 
 
 def use_starter(starter_key):
-    """Put a starter message in the message box and open the chat."""
-    st.session_state.composer_text = STARTERS[starter_key]
-    st.session_state.page = "chat"
+    """Send a quick action's plain request. The message box is left as the customer typed it."""
+    st.session_state.open_request = None  # a quick action starts a new request
+    submit_message(STARTERS[starter_key])
 
 
 def use_text(text):
@@ -340,6 +354,10 @@ def submit_message(text):
     if text == "" or is_busy():
         return
     st.session_state.messages.append({"role": "user", "text": text, "time": now_label()})
+    # The agent has no memory, so an answer to its question is sent with the request it belongs to
+    open_request = st.session_state.get("open_request")
+    if open_request:
+        text = f"{open_request}\nFollow-up from the customer: {text}"
     st.session_state.pending = text
     st.session_state.page = "chat"
 
@@ -354,6 +372,7 @@ def clear_chat():
     """Clear the conversation on screen. Saved bookings are not touched."""
     st.session_state.messages = [greeting_message()]
     st.session_state.pending = None
+    st.session_state.open_request = None
 
 
 def on_shortcut():
@@ -378,6 +397,8 @@ def process_pending_request():
             {"role": "assistant", "kind": "error", "text": error, "retry": text, "time": now_label()}
         )
     else:
+        # Keep the request open only while the assistant is asking for more details
+        st.session_state.open_request = text if result.get("status") == "need_more_info" else None
         booking = None
         if result.get("status") in ("booked", "cancelled"):
             booking = find_booking(result.get("booking_id", ""))
@@ -533,6 +554,11 @@ def agent_message_html(message):
         inner = f'<div class="fx-bubble bot"><p>{text}</p></div>' + cancelled_card(result, message.get("booking"))
         return message_row("assistant", inner, message["time"], wide=True)
 
+    # info status: general enquiry response (greetings, service lists, policy answers)
+    if status == "info":
+        inner = f'<div class="fx-bubble bot"><p>{text}</p></div>'
+        return message_row("assistant", inner, message["time"])
+
     # need_more_info, cannot_help and stopped get a labelled notice
     safety_text = gas_safety_message()
     if status == "cannot_help" and safety_text and safety_text in result.get("message", ""):
@@ -573,11 +599,11 @@ def typing_html():
 
 def render_styles():
     # Streamlit rebuilds the page on every rerun, so the stylesheet is re-sent each time.
-    # The file itself is read from disk only once (cached).
-    html_block(f"<style>{load_css()}</style>")
+    # The file is read from disk again only when it changes (cached by modification time).
+    html_block(f"<style>{load_css(CSS_FILE.stat().st_mtime)}</style>")
 
 
-def render_header():
+def render_header(busy=False):
     features = [
         ("shield", "Verified Technicians", "Trained professionals"),
         ("calendar", "Flexible Time Slots", "Morning, Afternoon, Evening"),
@@ -589,17 +615,26 @@ def render_header():
         f'<div><div class="fx-feature-title">{esc(title)}</div><div class="fx-feature-sub">{esc(sub)}</div></div></div>'
         for name, title, sub in features
     )
-    # The outer div lets the stylesheet adapt the header to its own width (container query)
-    html_block(
-        '<div class="fx-header-wrap"><div class="fx-header">'
-        f'<div class="fx-brand"><div class="fx-brand-mark">{icon("house", 22)}</div>'
-        '<div><div class="fx-brand-name">FixIt</div><div class="fx-brand-sub">Home Services</div></div></div>'
-        '<div class="fx-header-divider"></div>'
-        '<div><div class="fx-tagline-title">Your Home. Our Experts.</div>'
-        '<div class="fx-tagline-sub">Reliable home repair services across Pune</div></div>'
-        f'<div class="fx-header-features">{feature_html}</div>'
-        '</div></div>'
-    )
+    with st.container(key="header_wrap"):
+        col_brand, col_tagline = st.columns([1, 6], vertical_alignment="center")
+        with col_brand:
+            st.button(
+                "FixIt  \nHome Services", key="brand_logo", icon=":material/home:",
+                # wrap=True keeps the two-line label; by default Streamlit truncates
+                # a button placed directly in a column to a single clipped row.
+                on_click=go_to, args=("chat",), disabled=busy, wrap=True,
+                help="Return to Chat with Assistant",
+            )
+        with col_tagline:
+            html_block(
+                '<div class="fx-header-right">'
+                '<span class="fx-brand-name-hidden" style="display:none">FixIt</span>'
+                '<div class="fx-header-divider"></div>'
+                '<div class="fx-tagline"><div class="fx-tagline-title">Your Home. Our Experts.</div>'
+                '<div class="fx-tagline-sub">Reliable home repair services across Pune</div></div>'
+                f'<div class="fx-header-features">{feature_html}</div>'
+                '</div>'
+            )
 
 
 def render_sidebar(busy):
@@ -628,12 +663,16 @@ def render_sidebar(busy):
                     width="stretch", on_click=show_category, args=(category,), disabled=busy,
                 )
 
-        # Booking week and slots, as written in policies.md
-        first_day = BOOKING_WEEK[0].strftime("%a %d %b")
-        last_day = BOOKING_WEEK[-1].strftime("%a %d %b %Y")
+        # The bookable dates: days in slots.json from today (Pune time) onward
+        dates = tools.booking_dates()
+        if dates:
+            date_range = f"{dates[0].strftime('%d %b')} – {dates[-1].strftime('%d %b %Y')}"
+        else:
+            date_range = "No dates open yet"
         html_block(
-            f'<div class="fx-side-note">{icon("calendar", 16)}<div><strong>Booking week</strong>'
-            f'{first_day} to {last_day}<br>Morning, Afternoon and Evening slots</div></div>'
+            f'<div class="fx-side-note">{icon("calendar", 16)}<div><strong>Available booking dates</strong>'
+            f'<span class="fx-side-dates">{date_range}</span>'
+            'Morning, Afternoon and Evening slots</div></div>'
         )
 
 
@@ -804,8 +843,18 @@ def render_safety_notice(busy):
                   type="tertiary", on_click=go_to, args=("policies",), disabled=busy)
 
 
-def render_page_title(title, subtitle):
-    html_block(f'<div class="fx-section-title">{esc(title)}</div><div class="fx-section-sub">{esc(subtitle)}</div>')
+def render_page_title(title, subtitle, busy=False, show_back=True):
+    if show_back:
+        title_col, back_col = st.columns([4, 1.3], vertical_alignment="center")
+        with title_col:
+            html_block(f'<div class="fx-section-title">{esc(title)}</div><div class="fx-section-sub">{esc(subtitle)}</div>')
+        with back_col:
+            prev = st.session_state.get("previous_page", "chat")
+            prev_label = "Assistant" if prev == "chat" else "Back"
+            st.button(f"Back to {prev_label}", icon=":material/arrow_back:", key=f"back_btn_{st.session_state.page}",
+                      type="tertiary", on_click=go_back, disabled=busy)
+    else:
+        html_block(f'<div class="fx-section-title">{esc(title)}</div><div class="fx-section-sub">{esc(subtitle)}</div>')
 
 
 # ---------------------------------------------------------------------------
@@ -827,7 +876,7 @@ def page_chat(busy, online):
 
 
 def page_book(busy):
-    render_page_title("Book a Service", "Fill in the details. The assistant checks the slot and confirms the booking in the chat.")
+    render_page_title("Book a Service", "Fill in the details. The assistant checks the slot and confirms the booking in the chat.", busy=busy)
     services = load_services()
     areas = load_service_areas()
     with st.container(key="card_book"):
@@ -839,7 +888,7 @@ def page_book(busy):
                     format_func=lambda item: f"{item['name']} ({CATEGORY_INFO.get(item['category'], {}).get('label', item['category'])})",
                 )
                 day = st.selectbox(
-                    "Day", BOOKING_WEEK, index=None, placeholder="Choose a day in the booking week",
+                    "Day", tools.booking_dates(), index=None, placeholder="Choose an available day",
                     format_func=lambda item: item.strftime("%A, %d %b %Y"),
                 )
                 slot = st.selectbox("Time slot", list(SLOT_TIMES), index=None, placeholder="Choose a slot",
@@ -872,7 +921,7 @@ def page_book(busy):
 
 
 def page_services(busy):
-    render_page_title("Our Services", "Service prices from our price list. The visit charge and GST are added to every visit.")
+    render_page_title("Our Services", "Service prices from our price list. The visit charge and GST are added to every visit.", busy=busy)
     labels = ["All"] + [CATEGORY_INFO.get(category, {"label": category})["label"] for category in services_by_category()]
     st.pills("Category", labels, key="service_filter", label_visibility="collapsed")
     chosen = st.session_state.service_filter or "All"
@@ -898,8 +947,8 @@ def page_services(busy):
                               disabled=busy, width="stretch")
 
 
-def page_areas():
-    render_page_title("Service Areas", "We visit these PIN codes in Pune. The visit charge depends on the zone.")
+def page_areas(busy=False):
+    render_page_title("Service Areas", "We visit these PIN codes in Pune. The visit charge depends on the zone.", busy=busy)
     areas = load_service_areas()
     zone_columns = st.columns(2, gap="medium")
     for column, zone in zip(zone_columns, ["inner", "outer"]):
@@ -924,12 +973,17 @@ def page_areas():
 
 
 def page_bookings(busy):
-    title_col, button_col = st.columns([4, 1], vertical_alignment="bottom")
+    title_col, button_col, back_col = st.columns([3.5, 1, 1.4], vertical_alignment="bottom")
     with title_col:
-        render_page_title("All Bookings", "Loaded from the booking service (GET /bookings).")
+        render_page_title("All Bookings", "Loaded from the booking service (GET /bookings).", show_back=False)
     with button_col:
         st.button("Refresh", icon=":material/refresh:", key="refresh_bookings", disabled=busy,
                   on_click=fetch_bookings.clear)
+    with back_col:
+        prev = st.session_state.get("previous_page", "chat")
+        prev_label = "Assistant" if prev == "chat" else "Back"
+        st.button(f"Back to {prev_label}", icon=":material/arrow_back:", key="back_btn_bookings",
+                  type="tertiary", on_click=go_back, disabled=busy)
 
     bookings, error = fetch_bookings()
     if error:
@@ -981,8 +1035,8 @@ def page_bookings(busy):
     )
 
 
-def page_policies():
-    render_page_title("Policies & Safety", "The company rules, from data/policies.md.")
+def page_policies(busy=False):
+    render_page_title("Policies & Safety", "The company rules, from data/policies.md.", busy=busy)
     safety = gas_safety_message()
     if safety:
         st.warning(f"**Gas leak?** {safety}", icon=":material/warning:")
@@ -1006,7 +1060,7 @@ def main():
     online = backend_online()
 
     render_sidebar(busy)
-    render_header()
+    render_header(busy)
 
     page = st.session_state.page
     if page == "chat":
@@ -1016,11 +1070,11 @@ def main():
     elif page == "services":
         page_services(busy)
     elif page == "areas":
-        page_areas()
+        page_areas(busy)
     elif page == "bookings":
         page_bookings(busy)
     else:
-        page_policies()
+        page_policies(busy)
 
     # The page above is drawn with everything disabled, then the request is sent.
     if busy:

@@ -67,9 +67,11 @@ Keep bookings.json out of Git.
 
 ## 5. Company Rules
 
-Today's fixed date is Monday, 2 November 2026.
+Today is the real current date in Pune (India Standard Time, UTC+5:30), from `tools.today()`.
 
-Bookings are allowed only from 2 November to 8 November 2026.
+Bookings are allowed only on dates in `data/slots.json` that are today or later (`tools.booking_dates()`).
+The supplied schedule covers 2 to 8 November 2026, so after 8 November nothing can be booked until
+new slot data is supplied. Slots are never invented. Tests pin `tools.today()` to 2 November 2026.
 
 Time slots:
 - Morning: 9 AM to 12 PM
@@ -266,7 +268,7 @@ Never include .env, .venv or bookings.json in the GitHub submission.
 ## 13. Implementation Notes
 
 - Run the API: `uvicorn api:app --reload`. Run the UI: `streamlit run app.py`.
-- The tools accept dates as YYYY-MM-DD or as a day name in the booking week
+- The tools accept dates as YYYY-MM-DD or as a day name among the bookable dates
   ("Tuesday", "today", "tomorrow"). The model was less reliable when it had to
   convert day names itself.
 - `agent.py` copies all prices, booking IDs and fees from tool results after each run

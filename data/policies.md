@@ -4,8 +4,8 @@ FixIt Home Services (a made-up company) sends trained plumbers, electricians, AC
 
 ## Booking week
 
-- Today is **Monday, 2 November 2026**.
-- Bookings are open for this week only: **Monday 2 November to Sunday 8 November 2026**.
+- Today is the current date in Pune.
+- Bookings are open only for dates in the published slot schedule that are today or later. The supplied schedule covers **Monday 2 November to Sunday 8 November 2026**.
 - Every day has three time slots:
   - Morning: 9 am to 12 pm
   - Afternoon: 12 pm to 3 pm

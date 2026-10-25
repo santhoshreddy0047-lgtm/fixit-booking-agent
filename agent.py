@@ -32,7 +32,7 @@ POLICIES_FILE = Path(__file__).parent / "data" / "policies.md"
 
 class FixItResponse(BaseModel):
     """The final answer. Unused text fields are "" and unused numbers are 0."""
-    status: Literal["booked", "quote_only", "cancelled", "need_more_info", "cannot_help", "stopped"]
+    status: Literal["booked", "quote_only", "cancelled", "need_more_info", "cannot_help", "stopped", "info"]
     message: str
     booking_id: str
     service_name: str
@@ -120,12 +120,16 @@ def pin_code_checks(message):
     return results
 
 
-def build_instructions():
-    """Agent instructions: today's date, the booking week and the full policies."""
-    week_lines = []
-    for day_number in range(2, 9):
-        week_lines.append(f"- {tools.date(2026, 11, day_number).strftime('%A')}: 2026-11-{day_number:02d}")
-    week_text = "\n".join(week_lines)
+def build_instructions(context=None, agent=None):
+    """Agent instructions: today's date, the bookable dates and the full policies.
+
+    The SDK calls this before every run (context and agent are passed but not needed),
+    so the dates always match today.
+    """
+    current_day = tools.today()
+    dates = tools.booking_dates()
+    week_lines = [f"- {day.strftime('%A')}: {day.isoformat()}" for day in dates]
+    week_text = "\n".join(week_lines) if week_lines else "- (none)"
 
     return f"""You are the booking assistant for FixIt Home Services in Pune, India.
 Follow the company policies below, then the working rules at the end.
@@ -133,9 +137,10 @@ Follow the company policies below, then the working rules at the end.
 COMPANY POLICIES (data/policies.md)
 {POLICIES_TEXT}
 
-TODAY AND THE BOOKING WEEK
-Today is Monday, 2 November 2026 (2026-11-02). Bookings are open only from
-Monday 2 November to Sunday 8 November 2026. Dates in this week:
+TODAY AND THE BOOKABLE DATES
+These replace any fixed dates in the policies above.
+Today is {current_day.strftime('%A')}, {current_day.isoformat()} (Pune time).
+{tools.describe_booking_dates(dates)} The only dates that can be booked:
 {week_text}
 Time slots: Morning (9 am to 12 pm), Afternoon (12 pm to 3 pm), Evening (3 pm to 6 pm).
 Service categories: plumber, electrician, ac_technician, carpenter.
@@ -181,13 +186,22 @@ WORKING RULES
    - If book_visit returns already_booked=true, this visit was booked before. Use status
      booked with that booking ID and say that no new booking was made.
    - The name in the request is the customer's name.
-6. Price only: call get_price_quote. Status quote_only.
+6. Price only: a quote needs the repair, the PIN code and the day. Never assume any of
+   them. If some are missing, ask for only those, in one short question (if the day is
+   missing, say which dates are open, from the list above). Status
+   need_more_info. When all three are known, call get_price_quote. Status quote_only.
 7. Free slots (only when the customer asks which slots are free, not when they ask to
-   book with all six details): call check_slots. Status need_more_info, and invite them to book. If the
-   day is full, check_slots gives the next free day. Offer it.
+   book with all six details): check_slots needs the type of work and the day. Never
+   assume them. If one is missing, ask only for that one, in one short question (if the
+   day is missing, say which dates are open, from the list above). Status
+   need_more_info. Then call check_slots:
+   - If it lists free slots, give exactly those slots and invite the customer to book.
+     This is information, not a problem. Status info.
+   - If the day is full, check_slots gives the next free day. Offer it. Status need_more_info.
    Electrician work on a Sunday: call check_slots(category="electrician", date="Sunday")
    and offer the free day it gives. Status need_more_info. Never book it.
 8. Cancel: call cancel_booking with the booking ID. Status cancelled if ok=true.
+   If no booking ID is given, ask for it. Status need_more_info.
 9. If a tool returns ok=false, explain its message politely and choose the status from
    its error_type:
    - need_more_info: missing_details, invalid_details (including dates outside the
@@ -197,6 +211,19 @@ WORKING RULES
    - stopped: system_error.
 10. Set booking_id, service_name, date and slot from tool results. Use "" for text that
     does not apply and 0 for numbers that do not apply. Never use null.
+11. General enquiries: greetings (such as "Hi" or "Hello"), questions about which
+    services we offer, company policies, warranty, booking rules or how the service
+    works are NOT booking requests. For these:
+    - For greetings, reply with a short friendly greeting and offer to help. Status info.
+    - For "What services do you provide?" or similar, call find_services("") to get
+      the real service list, then summarise all services from the tool result.
+      Status info.
+    - For policy questions, answer from the policies above. Status info.
+    - Do NOT ask for booking details when the customer only wants information.
+    - Do NOT use status need_more_info for general enquiries.
+12. Follow-ups: the message may contain the customer's earlier request followed by lines
+    starting "Follow-up from the customer:" that answer your earlier question. Treat it
+    all as one request. Reuse every detail already given and never ask for it again.
 
 EXAMPLE
 Customer: "Book a tap repair for Asha, 9876543210, PIN 411038, Tuesday morning."
@@ -204,6 +231,15 @@ You call find_services(category="plumber"), pick P01, then call
 book_visit(name="Asha", phone="9876543210", pin_code="411038", service_id="P01",
 date="Tuesday", slot="Morning"). It returns ok=true with booking_id FX-1001, so you
 answer with status booked and a short confirmation.
+
+EXAMPLE
+Customer: "Hi"
+You reply with a friendly greeting and offer to help. Status info.
+
+EXAMPLE
+Customer: "What services do you provide?"
+You call find_services("") to get the service list and summarise all services grouped
+by category. Status info.
 
 Write short, friendly, plain-text messages without emojis.
 """
@@ -295,7 +331,7 @@ def cancel_booking(ctx: RunContextWrapper[RunState], booking_id: str) -> str:
 
 fixit_agent = Agent(
     name="FixIt Booking Agent",
-    instructions=build_instructions(),
+    instructions=build_instructions,  # called before every run, so the dates stay current
     model=MODEL_NAME,
     model_settings=ModelSettings(temperature=0),
     tools=[check_area, find_services, get_price_quote, check_slots, book_visit, cancel_booking],
@@ -343,6 +379,11 @@ def apply_tool_results(response, state):
         source = state.cancellation
     else:
         source = None
+
+    # General informational responses (greetings, service lists, policy answers)
+    # need no tool confirmation - pass them through as-is
+    if response.status == "info":
+        return make_response("info", response.message)
 
     # The AI claimed a success that no tool confirmed, or did not succeed at all
     if source is None:

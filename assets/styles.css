@@ -59,48 +59,252 @@
 
 /* ---------- Top header ---------- */
 
-.fx-header {
-  display: flex; align-items: center; flex-wrap: wrap; gap: 12px 20px;
+.st-key-header_wrap {
+  container-type: inline-size;
   background: var(--fx-card);
   border: 1px solid var(--fx-border);
   border-radius: var(--fx-radius);
   box-shadow: var(--fx-shadow);
-  padding: 10px 18px;
+  padding: 8px 18px;
+  margin-bottom: 14px;
 }
-.fx-brand { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-.fx-brand-mark {
-  width: 40px; height: 40px; border-radius: 10px;
-  background: var(--fx-blue); color: #fff;
-  display: flex; align-items: center; justify-content: center;
+.st-key-header_wrap [data-testid="stHorizontalBlock"] {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  gap: 16px !important;
 }
-.fx-brand-name { font-size: 1.4rem; font-weight: 800; color: var(--fx-navy); line-height: 1; letter-spacing: -0.01em; }
-.fx-brand-sub { font-size: 0.74rem; font-weight: 600; color: var(--fx-muted); margin-top: 3px; }
-.fx-header-divider { width: 1px; height: 34px; background: var(--fx-border); }
-.fx-tagline-title { font-size: 0.98rem; font-weight: 700; color: var(--fx-text); line-height: 1.3; }
-.fx-tagline-sub { font-size: 0.8rem; color: var(--fx-muted); line-height: 1.3; }
-.fx-header-features { display: flex; align-items: center; gap: 22px; margin-left: auto; }
-.fx-feature { display: flex; align-items: center; gap: 9px; }
+/* Columns are picked by their content, because Streamlit may wrap a column in an extra
+   stLayoutWrapper element. The brand column shrinks to the logo; the other takes the rest. */
+.st-key-header_wrap [data-testid="stColumn"]:has(.st-key-brand_logo),
+.st-key-header_wrap [data-testid="stLayoutWrapper"]:has(.st-key-brand_logo) {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: fit-content !important;
+}
+.st-key-header_wrap [data-testid="stColumn"]:has(.fx-header-right),
+.st-key-header_wrap [data-testid="stLayoutWrapper"]:has(.fx-header-right) {
+  flex: 1 1 0% !important;
+  width: 100% !important;  /* fills its wrapper, so the features can spread across the header */
+  min-width: 0 !important;
+}
+.st-key-brand_logo {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.st-key-brand_logo button {
+  display: inline-flex !important;
+  align-items: center !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  border-radius: var(--fx-radius-sm) !important;
+  padding: 4px 8px !important;
+  margin: 0 !important;
+  min-height: 44px !important;
+  height: auto !important;
+  box-shadow: none !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease-in-out !important;
+  text-align: left !important;
+}
+.st-key-brand_logo button:hover {
+  background: var(--fx-blue-soft) !important;
+  border-color: var(--fx-blue-border) !important;
+  transform: translateY(-1px);
+}
+.st-key-brand_logo button:active {
+  transform: translateY(0);
+}
+.st-key-brand_logo button:focus-visible {
+  outline: 2px solid var(--fx-blue) !important;
+  outline-offset: 1px !important;
+}
+/* Inside the button Streamlit renders:
+     div > span (row, own 8px gap) > [span (icon wrapper, sized for a small icon) > span stIconMaterial, label]
+   The wrapper must be as big as the 44px icon, or the icon spills over the label.
+   The row owns the 12px gap. */
+.st-key-brand_logo button span:has(> span > [data-testid="stIconMaterial"]) {
+  justify-content: flex-start !important;
+  gap: 12px !important;
+}
+.st-key-brand_logo button span:has(> [data-testid="stIconMaterial"]) {
+  width: 44px !important;
+  height: 44px !important;
+  flex: 0 0 44px !important;
+  margin: 0 !important;
+}
+.st-key-brand_logo [data-testid="stIconMaterial"] {
+  width: 44px !important;
+  height: 44px !important;
+  flex: 0 0 44px !important;
+  margin: 0 !important;
+  border-radius: 11px !important;
+  background: var(--fx-blue) !important;
+  color: #fff !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 1.6rem !important;
+  box-shadow: 0 4px 10px rgba(11, 79, 108, 0.22) !important;
+}
+.st-key-brand_logo button [data-testid="stMarkdownContainer"] {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+}
+/* The label is one paragraph, "FixIt<br>Home Services": the first line is the brand name */
+.st-key-brand_logo button p {
+  text-align: left !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: var(--fx-muted) !important;
+  line-height: 14px !important;
+  margin: 0 !important;
+  white-space: nowrap !important;
+}
+.st-key-brand_logo button p::first-line {
+  font-size: 24px !important;
+  font-weight: 800 !important;
+  color: var(--fx-navy) !important;
+  letter-spacing: -0.02em !important;
+  line-height: 28px !important;
+}
+.fx-header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  min-width: 0;
+}
+.fx-header-divider {
+  width: 1px;
+  height: 44px;
+  background: var(--fx-border);
+  flex-shrink: 0;
+}
+.fx-tagline {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 0;
+}
+.fx-tagline-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--fx-text);
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.fx-tagline-sub {
+  font-size: 0.78rem;
+  color: var(--fx-muted);
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.fx-header-features {
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  justify-content: space-evenly;
+  align-items: center;
+  gap: 12px 18px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.fx-feature {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex-shrink: 0;
+}
 .fx-feature-icon {
-  width: 34px; height: 34px; border-radius: var(--fx-radius-sm);
-  background: var(--fx-blue-soft); color: var(--fx-blue);
-  display: flex; align-items: center; justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--fx-radius-sm);
+  background: var(--fx-blue-soft);
+  color: var(--fx-blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
-.fx-feature-title { font-size: 0.82rem; font-weight: 700; color: var(--fx-text); white-space: nowrap; line-height: 1.3; }
-.fx-feature-sub { font-size: 0.72rem; color: var(--fx-muted); white-space: nowrap; line-height: 1.3; }
+.fx-feature-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--fx-text);
+  white-space: nowrap;
+  line-height: 1.25;
+}
+.fx-feature-sub {
+  font-size: 0.74rem;
+  color: var(--fx-muted);
+  white-space: nowrap;
+  line-height: 1.25;
+}
 
-/* The header adapts to its own width, which depends on whether the sidebar is open */
-.fx-header-wrap { container-type: inline-size; }
-@container (max-width: 1150px) {
-  /* Features move to their own evenly spaced row */
+/* The header adapts to its own width */
+@container (max-width: 1180px) {
+  .fx-header-features .fx-feature-sub { display: none; }
+  .fx-header-features { gap: 8px 14px; }
+}
+@container (max-width: 860px) {
+  .st-key-header_wrap [data-testid="stHorizontalBlock"] {
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+  }
+  .fx-header-right {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
   .fx-header-features {
-    margin-left: 0; width: 100%; justify-content: space-between; gap: 12px;
-    border-top: 1px solid var(--fx-border); padding-top: 10px;
+    width: 100%;
+    border-top: 1px solid var(--fx-border);
+    padding-top: 10px;
+    margin-top: 2px;
+    gap: 8px;
   }
 }
-@container (max-width: 760px) {
-  .fx-header-features .fx-feature-sub { display: none; }
+@container (max-width: 680px) {
+  .fx-header-features {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px 12px;
+  }
 }
-@container (max-width: 520px) {
+@container (max-width: 540px) {
+  .fx-header-features, .fx-header-divider, .fx-tagline-sub { display: none; }
+  .fx-tagline-title { font-size: 0.85rem; }
+}
+
+@media (max-width: 1200px) {
+  .fx-header-features .fx-feature-sub { display: none; }
+  .fx-header-features { gap: 8px 14px; }
+}
+@media (max-width: 900px) {
+  .st-key-header_wrap [data-testid="stHorizontalBlock"] {
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+  }
+  .fx-header-right {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .fx-header-features {
+    width: 100%;
+    border-top: 1px solid var(--fx-border);
+    padding-top: 10px;
+    margin-top: 2px;
+    gap: 8px;
+  }
+}
+@media (max-width: 700px) {
+  .fx-header-features {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px 12px;
+  }
+}
+@media (max-width: 540px) {
   .fx-header-features, .fx-header-divider, .fx-tagline-sub { display: none; }
   .fx-tagline-title { font-size: 0.85rem; }
 }
@@ -349,6 +553,30 @@
 }
 .fx-safety > .fx-icon { color: var(--fx-amber-icon); margin-top: 1px; align-self: flex-start; }
 
+/* Side panel container gap */
+.st-key-side_panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Back button navigation styling */
+[class*="st-key-back_btn_"] button {
+  color: var(--fx-blue) !important;
+  font-weight: 600 !important;
+  border-radius: var(--fx-radius-sm) !important;
+  transition: all 0.15s ease-in-out !important;
+  padding: 4px 10px !important;
+}
+[class*="st-key-back_btn_"] button:hover {
+  background: var(--fx-blue-soft) !important;
+  color: var(--fx-blue-dark) !important;
+}
+[class*="st-key-back_btn_"] button:focus-visible {
+  outline: 2px solid var(--fx-blue) !important;
+  outline-offset: 1px !important;
+}
+
 /* Quick actions: an even two-column grid; the last action spans both columns.
    In a narrow card (container query) the actions stack in one column. */
 .st-key-card_quick_actions { container-type: inline-size; }
@@ -357,7 +585,27 @@
 @container (max-width: 300px) {
   .st-key-qa_grid { grid-template-columns: 1fr; }
 }
-.st-key-qa_grid button { justify-content: flex-start; min-height: 2.6rem; }
+.st-key-qa_grid button {
+  justify-content: flex-start;
+  min-height: 2.6rem;
+  border: 1px solid var(--fx-border);
+  border-radius: var(--fx-radius-sm);
+  background: var(--fx-card);
+  transition: all 0.15s ease-in-out;
+}
+.st-key-qa_grid button:hover {
+  background: var(--fx-blue-soft);
+  border-color: var(--fx-blue-border);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(15, 27, 45, 0.05);
+}
+.st-key-qa_grid button:active {
+  transform: translateY(0);
+}
+.st-key-qa_grid button:focus-visible {
+  outline: 2px solid var(--fx-blue);
+  outline-offset: 1px;
+}
 .st-key-qa_grid button > div { justify-content: flex-start; width: 100%; }
 .st-key-qa_grid [data-testid="stIconMaterial"] { font-size: 1.25rem; color: var(--fx-blue); }
 .st-key-qa_quote [data-testid="stIconMaterial"] { color: var(--fx-amber-icon); }
@@ -452,8 +700,12 @@
   border: 1px solid #1E3C6B; border-radius: 10px; padding: 10px 12px; margin-top: 10px;
   font-size: 0.76rem; color: #A9BBD6; line-height: 1.45;
 }
-.fx-side-note .fx-icon { color: #7FB0FF; margin-top: 1px; }
-.fx-side-note strong { display: block; color: #EEF3FB; font-size: 0.84rem; margin-bottom: 2px; }
+.fx-side-note .fx-icon { color: #7FB0FF; margin-top: 2px; }
+.fx-side-note strong { display: block; color: #EEF3FB; font-size: 0.84rem; margin-bottom: 4px; }
+.fx-side-dates {
+  display: block; color: #EEF3FB; font-weight: 600; font-size: 0.8rem;
+  font-variant-numeric: tabular-nums; white-space: nowrap; margin-bottom: 2px;
+}
 
 /* ---------- Other pages ---------- */
 
@@ -501,7 +753,7 @@
 @media (max-width: 640px) {
   /* Top padding leaves room for Streamlit's menu button that opens the sidebar */
   [data-testid="stMainBlockContainer"] { padding: 3.2rem 0.6rem 1rem; }
-  .fx-header { padding: 8px 12px; gap: 10px; }
+  .st-key-header_wrap { padding: 8px 12px; }
   [class*="st-key-card_"] { padding: 12px; }
   /* The chat gets most of the small screen, with the message box still in view */
   [data-testid="stLayoutWrapper"]:has(> .st-key-chat_scroll) { height: 50vh; flex-basis: 50vh; }

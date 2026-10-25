@@ -21,6 +21,12 @@ import tools
 TEMP_DIR = Path(tempfile.mkdtemp())
 tools.BOOKINGS_FILE = TEMP_DIR / "bookings.json"
 
+# The assignment's scenario: "today" is Monday 2 November 2026 in Pune.
+# tools.today() normally reads the real date; the tests pin it so their results never change.
+from datetime import date as _date
+ASSIGNMENT_TODAY = _date(2026, 11, 2)
+tools.today = lambda: ASSIGNMENT_TODAY
+
 # Imported after the bookings file is switched, because api.py imports tools too
 import agent
 import api
@@ -236,6 +242,17 @@ r = call(tools.cancel_booking("FX-9999"))
 check("unknown booking refused", not r["ok"] and r["error_type"] == tools.UNKNOWN_BOOKING, r)
 r = call(tools.book_visit("Ravi", "9123456780", "411038", "P02", "2026-11-03", "Morning"))
 check("freed slot can be booked again (FX-1003)", r["ok"] and r["booking_id"] == "FX-1003", r)
+r = call(tools.cancel_booking(""))
+check("cancel with empty ID refused as missing_details", not r["ok"] and r["error_type"] == tools.MISSING_DETAILS, r)
+r = call(tools.cancel_booking("   "))
+check("cancel with whitespace ID refused as missing_details", not r["ok"] and r["error_type"] == tools.MISSING_DETAILS, r)
+check("cancellations preserve all saved booking records (none deleted)",
+      len(saved_bookings()) == 3 and {b["booking_id"] for b in saved_bookings()} == {"FX-1001", "FX-1002", "FX-1003"},
+      saved_bookings())
+fx1001 = [b for b in saved_bookings() if b["booking_id"] == "FX-1001"][0]
+check("cancelled record preserves original customer data",
+      fx1001["name"] == "Asha" and fx1001["phone"] == "9876543210" and fx1001["status"] == "cancelled"
+      and fx1001["cancellation_fee"] == 0, fx1001)
 
 # ---------------------------------------------------------------------------
 print("\n== Regression: response model has no null fields")
@@ -295,6 +312,22 @@ state.last_error_type = tools.SLOT_UNAVAILABLE
 result = agent.apply_tool_results(model_answer("booked", booking_id="FX-1001", total_price=352), state)
 check("invented booking is not reported as booked", result.status == "need_more_info" and result.booking_id == "", result)
 check("invented booking: prices are 0", result.total_price == 0, result)
+
+# The AI claims a cancellation that no tool confirmed
+state = agent.RunState()
+state.last_error = "No booking found with ID FX-9999."
+state.last_error_type = tools.UNKNOWN_BOOKING
+result = agent.apply_tool_results(model_answer("cancelled", booking_id="FX-9999", cancellation_fee=0), state)
+check("invented cancellation: not reported as cancelled",
+      result.status == "cannot_help" and result.booking_id == "" and result.cancellation_fee == 0, result)
+
+# Cancellation on already cancelled booking
+state = agent.RunState()
+state.last_error = "Booking FX-1001 is already cancelled."
+state.last_error_type = tools.ALREADY_CANCELLED
+result = agent.apply_tool_results(model_answer("cancelled", booking_id="FX-1001", cancellation_fee=0), state)
+check("already cancelled booking: status cannot_help, fee 0",
+      result.status == "cannot_help" and result.booking_id == "" and result.cancellation_fee == 0, result)
 
 # ---------------------------------------------------------------------------
 print("\n== Regression: scheduling problems are need_more_info, not cannot_help")
@@ -373,7 +406,104 @@ r = client.get("/bookings")
 check("GET /bookings returns the saved bookings", r.status_code == 200 and r.json()[0]["booking_id"] == "FX-1001", r.text)
 
 # ---------------------------------------------------------------------------
+print("\n== Regression: info status for general enquiries")
+# The schema must accept "info" as a valid status
+info_response = agent.make_response("info", "Hello! I am your FixIt assistant. How can I help you?")
+check("info status is valid in FixItResponse", info_response.status == "info", info_response)
+check("info response JSON has no null", "null" not in info_response.model_dump_json(), info_response.model_dump_json())
+
+# apply_tool_results passes through info status without overriding it
+state = agent.RunState()
+result = agent.apply_tool_results(model_answer("info", message="Hello! How can I help you today?"), state)
+check("info status: apply_tool_results preserves info status", result.status == "info", result)
+check("info status: message is preserved", "How can I help you" in result.message, result.message)
+check("info status: all detail fields are empty/zero",
+      result.booking_id == "" and result.service_name == "" and result.total_price == 0, result)
+
+# info must not be confused with booking or error statuses
+state = agent.RunState()
+state.last_error = "some error"
+state.last_error_type = tools.MISSING_DETAILS
+result = agent.apply_tool_results(model_answer("info", message="We offer plumbing, electrical and more."), state)
+check("info status: not overridden by last_error_type",
+      result.status == "info" and "plumbing" in result.message.lower(), result)
+
+# Services listing uses real data from find_services
+services_result = call(tools.find_services(""))
+all_services = services_result["services"]
+check("find_services('') returns all 11 services for general enquiry",
+      services_result["ok"] and len(all_services) == 11, services_result)
+service_names = [s["name"] for s in all_services]
+check("service catalogue includes key services",
+      "Tap repair" in service_names and "AC service" in service_names and "Fan installation" in service_names,
+      service_names)
+
+# Verify the instructions mention the info status
+instructions = agent.build_instructions()
+check("instructions mention status info for greetings",
+      "Status info" in instructions and "General enquiries" in instructions, "")
+check("instructions have example for greeting with info status",
+      "\"Hi\"" in instructions and "friendly greeting" in instructions, "")
+check("instructions have example for service listing with info status",
+      "What services do you provide?" in instructions and "find_services" in instructions, "")
+check("instructions say do not use need_more_info for general enquiries",
+      "Do NOT use status need_more_info for general enquiries" in instructions, "")
+
+# ---------------------------------------------------------------------------
+print("\n== Regression: policy enquiry data available for info responses")
+# Gas safety message
+check("gas safety message from policies.md available",
+      "open the windows" in agent.GAS_SAFETY_MESSAGE and "gas agency" in agent.GAS_SAFETY_MESSAGE,
+      agent.GAS_SAFETY_MESSAGE)
+# Warranty info in policies
+check("warranty info in policies", "30-day warranty" in agent.POLICIES_TEXT, "")
+# Booking rules in policies
+check("booking rules in policies", "name" in agent.POLICIES_TEXT and "mobile number" in agent.POLICIES_TEXT.lower(), "")
+
+# ---------------------------------------------------------------------------
+print("\n== Regression: response model schema includes info")
+schema = agent.FixItResponse.model_json_schema()
+status_enum = schema["properties"]["status"]["enum"]
+check("response schema includes info in status enum", "info" in status_enum, status_enum)
+check("response schema still includes all original statuses",
+      all(s in status_enum for s in ["booked", "quote_only", "cancelled", "need_more_info", "cannot_help", "stopped"]),
+      status_enum)
+
+# ---------------------------------------------------------------------------
 reset_bookings()
+print("\n== Dynamic booking dates (today = the real date in Pune)")
+from datetime import timedelta
+pinned_today = tools.today
+try:
+    tools.today = lambda: _date(2026, 11, 5)
+    check("days of the schedule before today are no longer bookable",
+          tools.booking_dates() == [_date(2026, 11, day) for day in (5, 6, 7, 8)], tools.booking_dates())
+    r = json.loads(tools.get_price_quote("P01", "411038", "2026-11-03"))
+    check("a past date is refused as already passed", not r["ok"] and "already passed" in r["message"], r)
+    r = json.loads(tools.get_price_quote("P01", "411038", "Tuesday"))
+    check("a weekday with no bookable date left is refused", not r["ok"] and "no Tuesday" in r["message"], r)
+    r = json.loads(tools.get_price_quote("P01", "411038", "Saturday"))
+    check("a day name means the bookable date on that weekday", r["ok"] and r["date"] == "2026-11-07", r)
+    r = json.loads(tools.get_price_quote("P01", "411038", "today"))
+    check("'today' follows the current date", r["ok"] and r["date"] == "2026-11-05", r)
+
+    tools.today = lambda: _date(2026, 10, 25)
+    check("before the schedule starts, every scheduled day is bookable",
+          tools.booking_dates() == [_date(2026, 11, 2) + timedelta(days=n) for n in range(7)], tools.booking_dates())
+    r = json.loads(tools.get_price_quote("P01", "411038", "today"))
+    check("a day with no published slots is refused, never invented", not r["ok"] and "2 November" in r["message"], r)
+
+    tools.today = lambda: _date(2026, 11, 9)
+    r = json.loads(tools.check_slots("plumber", "2026-11-10"))
+    check("after the schedule ends, nothing is bookable",
+          tools.booking_dates() == [] and not r["ok"] and r["message"].startswith("No dates are open"), r)
+    instructions = agent.build_instructions()
+    check("the agent's instructions use today's date and bookable dates",
+          "2026-11-09" in instructions and "No dates are open" in instructions)
+finally:
+    tools.today = pinned_today
+check("today() uses Pune time (UTC+5:30)", tools.PUNE_TIME.utcoffset(None) == timedelta(hours=5, minutes=30))
+
 print(f"\n{passed} passed, {failed} failed")
 if failed:
     raise SystemExit(1)

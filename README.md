@@ -210,7 +210,7 @@ These rules come from `data/policies.md` and the assignment brief.
 
 | Rule | Detail |
 |------|--------|
-| Fixed date | Today is Monday 2 November 2026. Bookings are open from 2 to 8 November 2026. |
+| Booking dates | Today is the real date in Pune. Bookings are open for dates in `data/slots.json` from today onward (the supplied schedule covers 2 to 8 November 2026). |
 | Time slots | Morning (9 AM to 12 PM), Afternoon (12 PM to 3 PM), Evening (3 PM to 6 PM) |
 | Capacity | One technician per type of work per slot. A slot is taken if `slots.json` marks it booked or an active booking uses it. |
 | Electricians | Do not work on Sundays |
@@ -373,7 +373,7 @@ Live results depend on the model and can vary between runs.
   `practice_requests.txt`, but that file was not provided and the brief lists only four.
 - **No conversation memory.** Each message is handled on its own. If the agent asks for more details,
   the customer must send one new message containing all of them.
-- **Fixed booking week.** Dates are fixed to 2 to 8 November 2026, as the assignment requires.
+- **Booking dates depend on the slot data.** Only dates in `data/slots.json` from today onward can be booked. The supplied schedule ends on 8 November 2026; after that nothing is bookable until new slots are added.
 - **Local only.** The application is not deployed. It needs an OpenAI API key and an internet
   connection, and each request uses OpenAI tokens.
 - **Model variability.** The model's choices can vary between runs. Because the tools make the final

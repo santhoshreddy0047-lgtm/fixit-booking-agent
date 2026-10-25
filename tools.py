@@ -9,7 +9,7 @@ that says what kind of problem it was. The tools never crash.
 """
 
 import json
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 
@@ -21,10 +21,10 @@ AREAS_FILE = DATA_DIR / "service_areas.json"
 SLOTS_FILE = DATA_DIR / "slots.json"
 BOOKINGS_FILE = BASE_DIR / "bookings.json"
 
+# FixIt works in Pune, so "today" is the date in India Standard Time (UTC+5:30, no daylight saving)
+PUNE_TIME = timezone(timedelta(hours=5, minutes=30), "IST")
+
 # Company rules from policies.md (these values are not in the JSON data files)
-TODAY = date(2026, 11, 2)
-WEEK_START = date(2026, 11, 2)
-WEEK_END = date(2026, 11, 8)
 VALID_SLOTS = ["Morning", "Afternoon", "Evening"]
 WEEKEND_EXTRA = 100
 GST_RATE = Decimal("0.18")
@@ -92,19 +92,42 @@ def clean_text(value):
     return str(value).strip()
 
 
+def today():
+    """Today's date in Pune."""
+    return datetime.now(PUNE_TIME).date()
+
+
+def booking_dates():
+    """The days customers can book: days in slots.json from today onward.
+
+    Only slots.json says which days have slots, so no other day can be booked.
+    """
+    current_day = today()
+    schedule_days = {datetime.strptime(row["date"], "%Y-%m-%d").date() for row in load_json(SLOTS_FILE)}
+    return sorted(day for day in schedule_days if day >= current_day)
+
+
+def describe_booking_dates(dates):
+    """'Monday 2 November to Sunday 8 November 2026', or a note that no dates are open."""
+    if not dates:
+        return "No dates are open for booking right now. New time slots have not been published yet."
+    first = f"{dates[0].strftime('%A')} {dates[0].day} {dates[0].strftime('%B')}"
+    last = f"{dates[-1].strftime('%A')} {dates[-1].day} {dates[-1].strftime('%B %Y')}"
+    return f"Bookings are open from {first} to {last}."
+
+
 def day_name_to_date(day_text):
-    """Turn 'today', 'tomorrow' or a day name like 'Tuesday' into a date in the booking week."""
+    """Turn 'today', 'tomorrow' or a day name like 'Tuesday' into a date (None if unknown)."""
     day_text = day_text.lower()
     if day_text == "today":
-        return TODAY
+        return today()
     if day_text == "tomorrow":
-        return TODAY + timedelta(days=1)
+        return today() + timedelta(days=1)
 
-    current_day = WEEK_START
-    while current_day <= WEEK_END:
+    # A day name means that weekday within the dates customers can book
+    for current_day in booking_dates():
         if current_day.strftime("%A").lower() == day_text:
             return current_day
-        current_day = current_day + timedelta(days=1)
     return None
 
 
@@ -119,10 +142,19 @@ def parse_booking_date(date_text):
         try:
             visit_date = datetime.strptime(date_text, "%Y-%m-%d").date()
         except ValueError:
+            weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+            if date_text.lower() in weekdays:
+                # A real weekday, but no bookable date falls on it
+                return None, f"There is no {date_text.capitalize()} we can book. {describe_booking_dates(booking_dates())}"
             return None, f"'{date_text}' is not a valid date. Use a day name like Tuesday or the format YYYY-MM-DD."
 
-    if visit_date < WEEK_START or visit_date > WEEK_END:
-        return None, "Bookings are open only from Monday 2 November to Sunday 8 November 2026. Please choose a date in this week."
+    if visit_date < today():
+        return None, f"{describe_day(visit_date)} has already passed. {describe_booking_dates(booking_dates())}"
+    dates = booking_dates()
+    if not dates:
+        return None, describe_booking_dates(dates)
+    if visit_date not in dates:
+        return None, f"{describe_booking_dates(dates)} Please choose one of these dates."
     return visit_date, ""
 
 
@@ -224,13 +256,11 @@ def find_other_free_day(category, visit_date):
     """
     later_days = []
     earlier_days = []
-    current_day = WEEK_START
-    while current_day <= WEEK_END:
+    for current_day in booking_dates():
         if current_day > visit_date:
             later_days.append(current_day)
         elif current_day < visit_date:
             earlier_days.append(current_day)
-        current_day = current_day + timedelta(days=1)
 
     # Nearest earlier day first
     earlier_days.reverse()
@@ -538,7 +568,7 @@ def cancel_existing_booking(booking_id):
             return problem(ALREADY_CANCELLED, f"Booking {booking_id} is already cancelled.")
 
         visit_date = datetime.strptime(booking["date"], "%Y-%m-%d").date()
-        if visit_date == TODAY:
+        if visit_date == today():
             fee = SAME_DAY_CANCELLATION_FEE
         else:
             fee = 0

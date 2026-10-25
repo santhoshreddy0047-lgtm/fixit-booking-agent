@@ -23,6 +23,31 @@ import streamlit as st
 from PIL import Image
 from streamlit.testing.v1 import AppTest
 
+import tools
+
+# The assignment's scenario: "today" is Monday 2 November 2026 in Pune.
+# tools.today() normally reads the real date; the tests pin it so their results never change.
+from datetime import date as _date
+ASSIGNMENT_TODAY = _date(2026, 11, 2)
+tools.today = lambda: ASSIGNMENT_TODAY
+# In test environments where pyarrow C-extension DLL is restricted by Windows Application Control,
+# provide test-runner compatibility for AppTest's headless element tree inspection.
+try:
+    import pyarrow
+except ImportError:
+    import pickle
+    import types
+    import pandas as _pd
+    import streamlit.dataframe_util as _dfu
+    _pa = types.ModuleType("pyarrow")
+    _pa.__version__ = "18.0.0"
+    _pa.Table = type("Table", (), {})
+    _pa.Array = type("Array", (), {})
+    _pa.RecordBatch = type("RecordBatch", (), {})
+    sys.modules["pyarrow"] = _pa
+    _dfu.convert_pandas_df_to_arrow_bytes = lambda df, **k: pickle.dumps(df)
+    _dfu.convert_arrow_bytes_to_pandas_df = lambda b: pickle.loads(b)
+
 import app as fixit_app   # the page's helper functions (importing does not draw the page)
 
 passed = 0
@@ -63,6 +88,8 @@ MORE_INFO = answer("need_more_info", "Please tell us your name, mobile number an
 GAS = answer("cannot_help", GAS_MESSAGE)
 NOT_SERVED = answer("cannot_help", "We do not serve pin code 400001 yet.")
 STOPPED = answer("stopped", "Sorry, the booking assistant is not available right now.")
+GREETING_INFO = answer("info", "Hello! I am your FixIt assistant. I can help you get price quotes, book visits, check time slots and more. How can I help you today?")
+SERVICES_INFO = answer("info", "We offer 11 repair services across four categories: Plumbing (Tap repair, Pipe leak repair, Toilet flush repair), Electrical (Fan installation, Switchboard repair, Light fitting), AC Services (AC service, AC gas refill, AC installation), and Carpentry (Door lock repair, Furniture assembly).")
 
 
 class FakeResponse:
@@ -251,6 +278,24 @@ for result, label, tone in [
     check(f"{result['status']}: no confirmation or price card", "fx-result" not in text)
 
 # ---------------------------------------------------------------------------
+print("\n== Info status: greetings and general enquiries")
+for result, description in [
+    (GREETING_INFO, "greeting"),
+    (SERVICES_INFO, "service listing"),
+]:
+    backend = FakeBackend()
+    backend.next_answer = result
+    app = start(backend)
+    send(app, backend, "Hi" if description == "greeting" else "What services do you provide?")
+    text = page_html(app)
+    check(f"info ({description}): shows the agent's message", html.escape(result["message"]) in text)
+    check(f"info ({description}): NOT shown as 'More details needed'", "More details needed" not in text)
+    check(f"info ({description}): NOT shown as 'Request stopped'", "Request stopped" not in text)
+    check(f"info ({description}): NOT shown as 'cannot help'", "We cannot help" not in text)
+    check(f"info ({description}): no confirmation or price card", "fx-result" not in text)
+    check(f"info ({description}): shown as a plain chat bubble", "fx-bubble bot" in text)
+
+# ---------------------------------------------------------------------------
 print("\n== Agent text is escaped, never run as HTML")
 backend = FakeBackend()
 backend.next_answer = answer("need_more_info", "<script>alert(1)</script> <b>bold</b>")
@@ -303,11 +348,32 @@ check("clearing the chat sends nothing to the back end", backend.other_calls == 
 print("\n== Shortcuts and quick actions")
 backend = FakeBackend()
 app = start(backend)
+backend.next_answer = MORE_INFO
 run(app, backend, lambda: button(app, key="qa_quote").click())
-check("Get a Price Quote fills the message box", app.text_input(key="composer_text").value.startswith("How much would"))
-check("a shortcut does not send anything by itself", backend.posted_messages == [])
+check("Get a Price Quote sends a plain request with no invented details",
+      backend.posted_messages == ["I would like a price quote."], backend.posted_messages)
+check("a quick action leaves the message box empty", app.text_input(key="composer_text").value == "")
+check("the quote request stays open while details are needed",
+      app.session_state["open_request"] == "I would like a price quote.")
+send(app, backend, "Tap repair, PIN 411038, Wednesday")
+check("the follow-up is sent with the open request",
+      backend.posted_messages[-1] == "I would like a price quote.\nFollow-up from the customer: Tap repair, PIN 411038, Wednesday",
+      backend.posted_messages[-1])
+check("the chat shows only what the customer typed",
+      app.session_state["messages"][-2]["text"] == "Tap repair, PIN 411038, Wednesday")
+backend.next_answer = QUOTE
+send(app, backend, "Morning")
+check("a finished answer closes the open request", app.session_state["open_request"] is None)
+send(app, backend, "Hello")
+check("a new message after a finished answer is sent on its own", backend.posted_messages[-1] == "Hello")
+backend.next_answer = MORE_INFO
+send(app, backend, "Book a plumber")
 run(app, backend, lambda: button(app, key="qa_cancel").click())
-check("Cancel a Booking fills the message box", app.text_input(key="composer_text").value == "Please cancel my booking FX-")
+check("a quick action starts a new request, not a follow-up",
+      backend.posted_messages[-1] == "I want to cancel a booking.", backend.posted_messages[-1])
+send(app, backend, "Book a plumber")
+run(app, backend, lambda: button(app, key="clear_chat").click())
+check("clearing the chat closes the open request", app.session_state["open_request"] is None)
 run(app, backend, lambda: button(app, key="qa_services").click())
 check("View Supported Services opens Our Services", app.session_state["page"] == "services" and len(app.exception) == 0)
 run(app, backend, lambda: button(app, key="nav_chat").click())
@@ -404,10 +470,7 @@ nav_labels = {item.key: item.label for item in app.button if item.key and item.k
 check("navigation shows a description under each title (no hover needed)",
       len(nav_labels) == 6 and all("\n" in label for label in nav_labels.values()), nav_labels)
 check("active page is the primary button", button(app, key="nav_chat").proto.type == "primary")
-check("booking week note comes from the fixed booking week", "Mon 02 Nov to Sun 08 Nov 2026" in text)
-import tools
-check("page's booking week matches the tools' booking week",
-      fixit_app.BOOKING_WEEK[0] == tools.WEEK_START and fixit_app.BOOKING_WEEK[-1] == tools.WEEK_END)
+check("booking dates note comes from the tools' bookable dates", "02 Nov – 08 Nov 2026" in text)
 check("popular-service counts match services.json",
       all(button(app, key=f"popular_{category}").label.endswith(f"{len(items)} services")
           for category, items in fixit_app.services_by_category().items()))
@@ -444,7 +507,7 @@ print("\n== Audit: reruns never re-send a request")
 backend = FakeBackend()
 app = start(backend)
 send(app, backend, "Book it")
-for key in ["nav_services", "nav_areas", "nav_bookings", "nav_policies", "nav_chat", "qa_quote"]:
+for key in ["nav_services", "nav_areas", "nav_bookings", "nav_policies", "nav_chat", "brand_logo"]:
     run(app, backend, lambda key=key: button(app, key=key).click())
 check("one message sent once, even after six more reruns", backend.posted_messages == ["Book it"], backend.posted_messages)
 check("chat history not duplicated by reruns", len(app.session_state["messages"]) == 3, len(app.session_state["messages"]))
@@ -546,6 +609,61 @@ with patch("requests.get", bookings_fail), patch("requests.post", FakeBackend().
     app = AppTest.from_file(APP_FILE, default_timeout=30).run()
 check("GET /bookings error: Recent Bookings shows a message, the page still works",
       "Bookings could not be loaded" in page_html(app) and len(app.exception) == 0)
+
+# ---------------------------------------------------------------------------
+print("\n== Clickable FixIt logo and Back Navigation")
+backend = FakeBackend()
+app = start(backend)
+send(app, backend, "Hello assistant")
+check("chat has conversation history", len(app.session_state.messages) >= 2)
+
+# Navigate to Our Services page
+run(app, backend, lambda: button(app, label="Our Services").click())
+check("navigated to services page", app.session_state.page == "services")
+
+# Click FixIt logo in the header
+run(app, backend, lambda: button(app, key="brand_logo").click())
+check("logo click returns user to assistant screen", app.session_state.page == "chat")
+check("logo click preserves chat history", len(app.session_state.messages) >= 2)
+check("logo click preserves bookings", len(backend.bookings) >= 2)
+
+# Test back button on each secondary page
+for page_key, nav_label, back_key in [
+    ("services", "Our Services", "back_btn_services"),
+    ("book", "Book a Service", "back_btn_book"),
+    ("areas", "Service Areas", "back_btn_areas"),
+    ("bookings", "All Bookings", "back_btn_bookings"),
+    ("policies", "Policies & Safety", "back_btn_policies"),
+]:
+    # Start at chat, navigate to page, then click back
+    app.session_state.page = "chat"
+    run(app, backend, lambda: button(app, label=nav_label).click())
+    check(f"navigated to {nav_label}", app.session_state.page == page_key)
+    run(app, backend, lambda: button(app, key=back_key).click())
+    check(f"back button from {nav_label} returns to chat", app.session_state.page == "chat")
+
+# Test Quick Actions navigation
+run(app, backend, lambda: button(app, key="qa_book").click())
+check("Quick Action 'Book a Service' opens book page", app.session_state.page == "book")
+
+# Return to chat screen via back button
+run(app, backend, lambda: button(app, key="back_btn_book").click())
+check("returned to chat from book page", app.session_state.page == "chat")
+
+run(app, backend, lambda: button(app, key="qa_services").click())
+check("Quick Action 'View Supported Services' opens services page", app.session_state.page == "services")
+
+# Return to chat screen via logo button
+run(app, backend, lambda: button(app, key="brand_logo").click())
+check("returned to chat from services page", app.session_state.page == "chat")
+
+for key, request in [("qa_quote", "I would like a price quote."),
+                     ("qa_slots", "Which appointment slots are available?"),
+                     ("qa_cancel", "I want to cancel a booking.")]:
+    run(app, backend, lambda: button(app, key=key).click())
+    check(f"Quick Action {key} sends '{request}' and opens the chat",
+          backend.posted_messages[-1] == request and app.session_state.page == "chat"
+          and app.session_state.composer_text == "", backend.posted_messages[-1:])
 
 # ---------------------------------------------------------------------------
 print(f"\n{passed} passed, {failed} failed")

@@ -277,38 +277,6 @@
   .fx-tagline-title { font-size: 0.85rem; }
 }
 
-@media (max-width: 1200px) {
-  .fx-header-features .fx-feature-sub { display: none; }
-  .fx-header-features { gap: 8px 14px; }
-}
-@media (max-width: 900px) {
-  .st-key-header_wrap [data-testid="stHorizontalBlock"] {
-    flex-wrap: wrap !important;
-    gap: 10px !important;
-  }
-  .fx-header-right {
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-  .fx-header-features {
-    width: 100%;
-    border-top: 1px solid var(--fx-border);
-    padding-top: 10px;
-    margin-top: 2px;
-    gap: 8px;
-  }
-}
-@media (max-width: 700px) {
-  .fx-header-features {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px 12px;
-  }
-}
-@media (max-width: 540px) {
-  .fx-header-features, .fx-header-divider, .fx-tagline-sub { display: none; }
-  .fx-tagline-title { font-size: 0.85rem; }
-}
-
 /* ---------- Cards (any container whose key starts with "card_") ---------- */
 
 [class*="st-key-card_"] {
